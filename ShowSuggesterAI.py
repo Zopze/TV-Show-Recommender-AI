@@ -1,14 +1,32 @@
-
 from thefuzz import fuzz
 import pandas as pd
 import numpy as np
 import pickle
-from openai.embeddings_utils import cosine_similarity
 from talking_to_AI import create_ai_tv
 import requests
 from PIL import Image
 from io import BytesIO
 import matplotlib.pyplot as plt
+
+
+def cosine_similarity(a, b) -> float:
+    """
+    Compute cosine similarity between two vectors.
+
+    Args:
+        a: vector-like (list/np.ndarray)
+        b: vector-like (list/np.ndarray)
+
+    Returns:
+        Cosine similarity in [-1, 1]. Returns 0.0 if one vector is all zeros.
+    """
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+
+    denom = np.linalg.norm(a) * np.linalg.norm(b)
+    if denom == 0:
+        return 0.0
+    return float(np.dot(a, b) / denom)
 
 
 def show_image(df):
@@ -30,12 +48,13 @@ def show_image(df):
         ax = plt.subplot(1, 2, i + 1)
 
         try:
-            response = requests.get(image_url)
+            response = requests.get(image_url, timeout=20)
+            response.raise_for_status()
             image = Image.open(BytesIO(response.content))
             ax.imshow(image)
             ax.axis('off')
 
-        except Exception as e:
+        except Exception:
             holder_image = 'error-message.png'
             image = Image.open(holder_image)
             ax.imshow(image)
@@ -44,6 +63,7 @@ def show_image(df):
     plt.tight_layout()
     plt.show()
     return image_urls
+
 
 def automatic_translator(shows_list, df):
     if shows_list is None or shows_list == [] or df is None:
@@ -60,7 +80,7 @@ def ai_recommendation(shows_list, df):
     if not shows_list:
         return pd.DataFrame(), pd.DataFrame()
 
-    with open('imdb_tvshows_embedding.pkl','rb') as f:
+    with open('imdb_tvshows_embedding.pkl', 'rb') as f:
         embed_dict_info = pickle.load(f)
 
     df['Embedding'] = df['Title'].apply(lambda title: embed_dict_info[title])
@@ -78,49 +98,56 @@ def ai_recommendation(shows_list, df):
     # Creating a DataFrame that contains the shows from the file without the shows the user gave.
     df_without_input_shows = df[~df['Title'].isin(shows_list)]
 
-    # Sorting the DataFrame that based on similarity.
+    # Sorting the DataFrame based on similarity.
     df_sort = df_without_input_shows.sort_values('Similarity', ascending=False)
 
-    #The recomnended Shows that we found in the file.
+    # The recommended shows that we found in the file.
     recommendation_shows = df_sort.head(5)
 
-    #The shows that the AI create.
+    # The shows that the AI creates.
     generate_shows = create_ai_tv(shows_list, recommendation_shows)
 
     return recommendation_shows, generate_shows
 
+
 if __name__ == '__main__':
     df = pd.read_csv('imdb_tvshows.csv')
-    tv_shows = []
-    correction = 'n'
+
     while True:
-        tv_shows = input("Which TV shows did you love watching?"
-                         "\nSeparate them by a comma and Make sure to enter more than 1 show\n")
-        tv_shows = tv_shows.split(',')
+        tv_shows = input(
+            "Which TV shows did you love watching?"
+            "\nSeparate them by a comma and make sure to enter more than 1 show\n"
+        )
+
+        # Split + trim spaces around each title
+        tv_shows = [s.strip() for s in tv_shows.split(',') if s.strip()]
+
         if len(tv_shows) <= 1:
-            print("Please enter more than 1 show, Separated by a commas.\n")
+            print("Please enter more than 1 show, separated by commas.\n")
             continue
 
         correct_shows = automatic_translator(tv_shows, df)
-        correction = input(f"Just to make sure, do you mean {correct_shows}? (y/n)\n")
+        correction = input(f"Just to make sure, do you mean {correct_shows}? (y/n)\n").strip().lower()
 
         if correction != 'y':
-            print("Sorry about that. Lets try again, please make sure to write the names of the tv shows correctly")
+            print("Sorry about that. Let's try again — please make sure to write the show names correctly.\n")
         else:
             print("Great! Generating recommendations…")
             break
 
     recommendation_shows, generate_shows = ai_recommendation(correct_shows, df)
-    print("Here are the tv shows that i think you would love:\n")
 
-    for i, row in recommendation_shows.iterrows():
-        print(f"{row['Title']} ({row['Similarity']*100:.0f}%)\n")
+    print("Here are the TV shows that I think you would love:\n")
+    for _, row in recommendation_shows.iterrows():
+        print(f"{row['Title']} ({row['Similarity'] * 100:.0f}%)\n")
 
-    print(f"I have also created just for you two shows which I think you would love."
-          f"\nShow #1 is based on the fact that you loved the input shows that you gave me."
-          f"\nIts name is {generate_shows.at[0, 'Title']} and it is about {generate_shows.at[0, 'Description']}"
-          f"\nShow #2 is based on the shows that I recommended for you. "
-          f"\nIts name is {generate_shows.at[1, 'Title']} and it is about {generate_shows.at[1, 'Description']}"
-          f"\nHere are also the 2 tv show ads. Hope you like them!")
+    print(
+        "I have also created just for you two shows which I think you would love."
+        "\nShow #1 is based on the fact that you loved the input shows that you gave me."
+        f"\nIts name is {generate_shows.at[0, 'Title']} and it is about {generate_shows.at[0, 'Description']}"
+        "\nShow #2 is based on the shows that I recommended for you."
+        f"\nIts name is {generate_shows.at[1, 'Title']} and it is about {generate_shows.at[1, 'Description']}"
+        "\nHere are also the 2 TV show ads. Hope you like them!"
+    )
+
     show_image(generate_shows)
-

@@ -1,3 +1,19 @@
+"""
+OpenAI Integration for TV Show Recommender.
+
+This module handles all AI-related features: generating fictional TV series
+ideas from user favorites, creating DALL·E poster images, and assembling
+the results into a DataFrame for display.
+
+Dependencies:
+    - openai: Chat completions (GPT) and image generation (DALL·E 2)
+    - dotenv: Load OPENAI_API_KEY from .env file
+
+Environment variables:
+    OPENAI_API_KEY: Required for AI features
+    OPENAI_ORGANIZATION, OPENAI_PROJECT: Optional, for org/project-scoped keys
+"""
+
 import os
 from dotenv import load_dotenv
 import pandas as pd
@@ -35,6 +51,19 @@ def _configure_openai():
 
 
 def extract_title_and_description(text: str):
+    """
+    Parse GPT output to extract TV series name and description.
+
+    Expects text in the format:
+        TV Series name: <name>
+        TV Series short description: <description>
+
+    Args:
+        text: Raw string from GPT response.
+
+    Returns:
+        Tuple of (title, description). Strips surrounding quotes.
+    """
     title_start = text.find("TV Series name: ") + len("TV Series name: ")
     title_end = text.find("\n", title_start)
     title = text[title_start:title_end].strip().strip('"')
@@ -47,6 +76,17 @@ def extract_title_and_description(text: str):
 
 
 def create_tv_series_names_and_descriptions(initial_shows, recommended_shows):
+    """
+    Use GPT to create two fictional TV series: one based on user favorites,
+    one based on the recommended shows.
+
+    Args:
+        initial_shows: List of show titles the user liked.
+        recommended_shows: DataFrame or list of recommended show titles.
+
+    Returns:
+        Tuple of (raw_text_initial, raw_text_recommended) from GPT.
+    """
     _configure_openai()
 
     # recommended_shows can be a DataFrame; send only a small list to the model
@@ -88,6 +128,15 @@ TV Series short description: <description>
 
 
 def create_tv_series_photo(description: str):
+    """
+    Generate a TV-series poster image from a description using DALL·E 2.
+
+    Args:
+        description: Text description of the fictional TV series.
+
+    Returns:
+        URL string of the generated image (512x512).
+    """
     _configure_openai()
 
     # DALL·E 2 is cheaper than DALL·E 3, good enough for a small poster in this project
@@ -102,6 +151,19 @@ def create_tv_series_photo(description: str):
 
 
 def create_ai_tv(initial_shows, recommended_shows):
+    """
+    Create two AI-generated fictional TV series with titles, descriptions, and poster images.
+
+    Show #1 is based on the user's favorite shows; Show #2 is based on the
+    recommended shows. Each gets a DALL·E-generated poster image.
+
+    Args:
+        initial_shows: List of show titles the user liked.
+        recommended_shows: DataFrame or list of recommended show titles.
+
+    Returns:
+        DataFrame with columns: Title, Description, Image (URLs).
+    """
     response_from_initial_shows, response_from_recommended_shows = create_tv_series_names_and_descriptions(
         initial_shows, recommended_shows
     )

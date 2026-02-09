@@ -21,6 +21,14 @@ It also supports generating **two custom “new shows”** and **two TV-show ads
    - **Show #2** based on the recommended shows
    - **2 ads** (images) for the shows using DALL·E.
 
+### ✅ Important note about input shows
+
+You can type show names freely (even with typos). The program uses **fuzzy matching** to map your input to the closest real title in `imdb_tvshows.csv` and then asks you to confirm.
+
+That means:
+- You **don’t need** to copy-paste exact titles from the CSV.
+- But the final matched shows **must exist in the dataset** (the program will always choose the closest match from the CSV).
+
 ---
 
 ## 🧠 How recommendations work (high level)

@@ -186,3 +186,7 @@ if __name__ == '__main__':
     else:
         print("\nAI-generated shows/ads were skipped (OpenAI API not available).")
         print("You can still use the recommendations normally.")
+    
+    # Keep the console open when running as a PyInstaller EXE (double-click)
+    if getattr(sys, "frozen", False):
+        input("\nPress Enter to exit...")

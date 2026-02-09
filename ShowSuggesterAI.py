@@ -8,6 +8,16 @@ import requests
 from PIL import Image
 from io import BytesIO
 import matplotlib.pyplot as plt
+import os
+import sys
+
+
+def resource_path(relative_path: str) -> str:
+    """
+    Get absolute path to resource, works for dev and for PyInstaller.
+    """
+    base_path = getattr(sys, "_MEIPASS", os.path.abspath("."))
+    return os.path.join(base_path, relative_path)
 
 
 def cosine_similarity(a, b) -> float:
@@ -56,7 +66,7 @@ def show_image(df):
             ax.axis('off')
         except Exception:
             # Fallback placeholder image (make sure this file exists in your project)
-            holder_image = 'error-message.png'
+            holder_image = resource_path('error-message.png')
             image = Image.open(holder_image)
             ax.imshow(image)
             ax.axis('off')
@@ -88,7 +98,7 @@ def ai_recommendation(shows_list, df):
     if not shows_list:
         return pd.DataFrame(), pd.DataFrame()
 
-    with open('imdb_tvshows_embedding.pkl', 'rb') as f:
+    with open(resource_path('imdb_tvshows_embedding.pkl'), 'rb') as f:
         embed_dict_info = pickle.load(f)
 
     df['Embedding'] = df['Title'].apply(lambda title: embed_dict_info[title])
@@ -127,7 +137,7 @@ def ai_recommendation(shows_list, df):
 
 
 if __name__ == '__main__':
-    df = pd.read_csv('imdb_tvshows.csv')
+    df = pd.read_csv(resource_path('imdb_tvshows.csv'))
 
     while True:
         tv_shows = input(

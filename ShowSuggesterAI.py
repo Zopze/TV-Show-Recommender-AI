@@ -21,7 +21,7 @@ Data files required:
 from thefuzz import fuzz
 import pandas as pd
 import numpy as np
-import pickle
+from embedding_file import load_embeddings
 from talking_to_AI import create_ai_tv
 import requests
 from PIL import Image
@@ -129,7 +129,7 @@ def automatic_translator(shows_list, df):
     Returns:
         List of corrected/matched show titles. Empty list if input is invalid.
     """
-    if not shows_list or df is None:
+    if not shows_list or df is None or not isinstance(df, pd.DataFrame):
         return []
 
     correct_shows_list = []
@@ -163,17 +163,16 @@ def ai_recommendation(shows_list, df):
 
     df = df.copy()
 
-    with open(resource_path('imdb_tvshows_embedding.pkl'), 'rb') as f:
-        embed_dict_info = pickle.load(f)
+    embed_dict_info = load_embeddings(resource_path('imdb_tvshows_embedding.pkl'))
 
     df['Embedding'] = df['Title'].apply(lambda title: embed_dict_info.get(title))
     df = df[df['Embedding'].notna()]
 
-    # Compute the average embedding vector of all shows in given shows list
-    avg_embed = np.mean(
-        [embed_dict_info[show] for show in shows_list if show in embed_dict_info],
-        axis=0
-    )
+    valid_embeds = [embed_dict_info[show] for show in shows_list if show in embed_dict_info]
+    if not valid_embeds:
+        return pd.DataFrame(), pd.DataFrame()
+
+    avg_embed = np.mean(valid_embeds, axis=0)
 
     # Function that compute the similarity with the average embedding.
     def computing_similarity(row):
@@ -232,7 +231,8 @@ if __name__ == '__main__':
 
     print("\nHere are the TV shows that I think you would love:\n")
     for _, row in recommendation_shows.iterrows():
-        print(f"{row['Title']} ({row['Similarity'] * 100:.0f}%)\n")
+        sim = max(0.0, row['Similarity'])
+        print(f"{row['Title']} ({sim * 100:.0f}%)\n")
 
     # Only show AI-generated content if it exists
     if not generate_shows.empty and len(generate_shows) >= 2:

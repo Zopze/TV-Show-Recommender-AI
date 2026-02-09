@@ -15,6 +15,7 @@ Environment variables:
 """
 
 import os
+from functools import lru_cache
 from dotenv import load_dotenv
 import pandas as pd
 from openai import OpenAI
@@ -23,6 +24,7 @@ from openai import OpenAI
 load_dotenv()
 
 
+@lru_cache(maxsize=1)
 def _get_openai_client():
     """
     Return an OpenAI client (lazy, only when AI features are used).
@@ -68,6 +70,8 @@ def extract_title_and_description(text: str):
         raise ValueError(f"Expected '{title_marker}' not found in GPT output:\n{text[:200]}")
     title_start = title_pos + len(title_marker)
     title_end = text.find("\n", title_start)
+    if title_end == -1:
+        title_end = len(text)
     title = text[title_start:title_end].strip().strip('"')
 
     desc_pos = text.find(desc_marker)
@@ -117,6 +121,7 @@ TV Series short description: <description>
         model="gpt-4o-mini",
         temperature=0.8,
         max_tokens=250,
+        timeout=60.0,
     )
     response_chat_text_initial = response_chat_initial.choices[0].message.content
 
@@ -126,6 +131,7 @@ TV Series short description: <description>
         model="gpt-4o-mini",
         temperature=0.8,
         max_tokens=250,
+        timeout=60.0,
     )
     response_chat_text_recommended = response_chat_recommended.choices[0].message.content
 
@@ -150,6 +156,7 @@ def create_tv_series_photo(description: str):
         prompt=f"Create a TV-series poster or wall art, based on this description: {description}",
         n=1,
         size="512x512",
+        timeout=60.0,
     )
 
     return response_image.data[0].url

@@ -26,4 +26,5 @@ def load_embeddings(path: str = 'imdb_tvshows_embedding.pkl') -> dict:
         Dict mapping show titles to embedding vectors.
     """
     with open(path, 'rb') as f:
+        # Trusted, project-internal artifact (Ruff S301)
         return pickle.load(f)

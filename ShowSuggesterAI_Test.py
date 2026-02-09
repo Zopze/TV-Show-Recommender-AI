@@ -55,7 +55,8 @@ def test_ai_recommendation():
         'Stranger Things': [0.3, 0.4]
     }
 
-    with patch('ShowSuggesterAI.pickle.load', return_value=embed_dict):
+    with patch('ShowSuggesterAI.load_embeddings', return_value=embed_dict), \
+         patch('builtins.open', MagicMock()):
         recommend_shows, generate_shows = ai_recommendation(shows_list, df)
 
     assert isinstance(recommend_shows, pd.DataFrame)
@@ -66,24 +67,33 @@ def test_ai_recommendation():
 
 def test_show_image():
     """Test show_image handles both invalid and valid image URLs."""
-    # Invalid URLs: requests fails, fallback to placeholder image
-    df = pd.DataFrame({'Image': ['url1', 'url2']})
+    expected_urls = ['url1', 'url2']
+    df = pd.DataFrame({'Image': expected_urls})
+    mock_ax = MagicMock()
     with patch('ShowSuggesterAI.requests.get', side_effect=Exception("network")), \
          patch('ShowSuggesterAI.plt.show'), \
-         patch('ShowSuggesterAI.Image.open', return_value=MagicMock()):
-        show_image(df)
+         patch('ShowSuggesterAI.Image.open', return_value=MagicMock()), \
+         patch('ShowSuggesterAI.plt.subplot', return_value=mock_ax), \
+         patch('ShowSuggesterAI.plt.figure'):
+        result = show_image(df)
+    assert result == expected_urls
+    assert result == df['Image'].tolist()
 
     # Valid URLs: mock network and image load to keep test hermetic
-    df = pd.DataFrame({
-        'Image': ['https://example.com/img1.jpg', 'https://example.com/img2.jpg']
-    })
+    expected_urls = ['https://example.com/img1.jpg', 'https://example.com/img2.jpg']
+    df = pd.DataFrame({'Image': expected_urls})
     mock_response = MagicMock()
     mock_response.content = b'fake'
     mock_response.raise_for_status = MagicMock()
+    mock_ax = MagicMock()
     with patch('ShowSuggesterAI.requests.get', return_value=mock_response), \
          patch('ShowSuggesterAI.plt.show'), \
-         patch('ShowSuggesterAI.Image.open', return_value=MagicMock()):
-        show_image(df)
+         patch('ShowSuggesterAI.Image.open', return_value=MagicMock()), \
+         patch('ShowSuggesterAI.plt.subplot', return_value=mock_ax), \
+         patch('ShowSuggesterAI.plt.figure'):
+        result = show_image(df)
+    assert result == expected_urls
+    assert result == df['Image'].tolist()
 
 
 

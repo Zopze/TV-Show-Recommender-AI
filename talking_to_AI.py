@@ -1,45 +1,83 @@
+"""
+OpenAI Integration for TV Show Recommender.
+
+This module handles all AI-related features: generating fictional TV series
+ideas from user favorites, creating DALL·E poster images, and assembling
+the results into a DataFrame for display.
+
+Dependencies:
+    - openai: Chat completions (GPT) and image generation (DALL·E 2)
+    - dotenv: Load OPENAI_API_KEY from .env file
+
+Environment variables:
+    OPENAI_API_KEY: Required for AI features
+    OPENAI_ORGANIZATION, OPENAI_PROJECT: Optional, for org/project-scoped keys
+"""
+
 import os
+from functools import lru_cache
 from dotenv import load_dotenv
 import pandas as pd
-import openai
+from openai import OpenAI
 
 # Load .env if present (works for both source and PyInstaller builds, as long as .env is next to the exe)
 load_dotenv()
 
 
-def _configure_openai():
+@lru_cache(maxsize=1)
+def _get_openai_client():
     """
-    Configure OpenAI lazily (only when AI features are used).
+    Return an OpenAI client (lazy, only when AI features are used).
     This prevents the whole app from crashing at import time when no key exists.
     """
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("Missing OPENAI_API_KEY. Provide it in a .env file or as an environment variable.")
 
-    openai.api_key = api_key
-
-    # Optional: if you ever decide to use organization/project, keep them optional.
-    # If they're not set, OpenAI will use your default.
     org = os.getenv("OPENAI_ORGANIZATION")
-    if org:
-        openai.organization = org
-
     project = os.getenv("OPENAI_PROJECT")
+    kwargs = {"api_key": api_key}
+    if org:
+        kwargs["organization"] = org
     if project:
-        # Some setups support project-scoped keys; harmless if unused.
-        # If your OpenAI package doesn't support this property, it will be ignored.
-        try:
-            openai.project = project
-        except Exception:
-            pass
+        kwargs["project"] = project
+
+    return OpenAI(**kwargs)
 
 
 def extract_title_and_description(text: str):
-    title_start = text.find("TV Series name: ") + len("TV Series name: ")
+    """
+    Parse GPT output to extract TV series name and description.
+
+    Expects text in the format:
+        TV Series name: <name>
+        TV Series short description: <description>
+
+    Args:
+        text: Raw string from GPT response.
+
+    Returns:
+        Tuple of (title, description). Strips surrounding quotes.
+
+    Raises:
+        ValueError: If expected markers are not found in the output.
+    """
+    title_marker = "TV Series name: "
+    desc_marker = "TV Series short description: "
+
+    title_pos = text.find(title_marker)
+    if title_pos == -1:
+        raise ValueError(f"Expected '{title_marker}' not found in GPT output:\n{text[:200]}")
+    title_start = title_pos + len(title_marker)
     title_end = text.find("\n", title_start)
+    if title_end == -1:
+        title_end = len(text)
     title = text[title_start:title_end].strip().strip('"')
 
-    desc_start = text.find("TV Series short description: ") + len("TV Series short description: ")
+    desc_pos = text.find(desc_marker)
+    if desc_pos == -1:
+        raise ValueError(f"Expected '{desc_marker}' not found in GPT output:\n{text[:200]}")
+    desc_start = desc_pos + len(desc_marker)
     desc_end = text.find("\nTV Series name:", desc_start)  # next title (if exists)
     description = text[desc_start:desc_end if desc_end != -1 else None].strip().strip('"')
 
@@ -47,7 +85,18 @@ def extract_title_and_description(text: str):
 
 
 def create_tv_series_names_and_descriptions(initial_shows, recommended_shows):
-    _configure_openai()
+    """
+    Use GPT to create two fictional TV series: one based on user favorites,
+    one based on the recommended shows.
+
+    Args:
+        initial_shows: List of show titles the user liked.
+        recommended_shows: DataFrame or list of recommended show titles.
+
+    Returns:
+        Tuple of (raw_text_initial, raw_text_recommended) from GPT.
+    """
+    client = _get_openai_client()
 
     # recommended_shows can be a DataFrame; send only a small list to the model
     recommended_titles = (
@@ -66,42 +115,81 @@ TV Series short description: <description>
 """
 
     # For your project: gpt-4o-mini is a solid balance of quality + cost
-    response_chat_initial = openai.ChatCompletion.create(
+    response_chat_initial = client.chat.completions.create(
         seed=1,
         messages=[{"role": "user", "content": prompt_template.format(shows=initial_shows)}],
         model="gpt-4o-mini",
         temperature=0.8,
         max_tokens=250,
+        timeout=60.0,
     )
-    response_chat_text_initial = response_chat_initial["choices"][0]["message"]["content"]
+    choice_initial = response_chat_initial.choices[0]
+    if choice_initial.message.content is None:
+        reason = getattr(choice_initial, "finish_reason", None)
+        raise ValueError(
+            f"Model returned no content (finish_reason={reason}). "
+            "Expected marker not found; possibly refused or content-filtered."
+        )
+    response_chat_text_initial = choice_initial.message.content
 
-    response_chat_recommended = openai.ChatCompletion.create(
+    response_chat_recommended = client.chat.completions.create(
         seed=1,
         messages=[{"role": "user", "content": prompt_template.format(shows=recommended_titles)}],
         model="gpt-4o-mini",
         temperature=0.8,
         max_tokens=250,
+        timeout=60.0,
     )
-    response_chat_text_recommended = response_chat_recommended["choices"][0]["message"]["content"]
+    choice_recommended = response_chat_recommended.choices[0]
+    if choice_recommended.message.content is None:
+        reason = getattr(choice_recommended, "finish_reason", None)
+        raise ValueError(
+            f"Model returned no content (finish_reason={reason}). "
+            "Expected marker not found; possibly refused or content-filtered."
+        )
+    response_chat_text_recommended = choice_recommended.message.content
 
     return response_chat_text_initial, response_chat_text_recommended
 
 
 def create_tv_series_photo(description: str):
-    _configure_openai()
+    """
+    Generate a TV-series poster image from a description using DALL·E 2.
+
+    Args:
+        description: Text description of the fictional TV series.
+
+    Returns:
+        URL string of the generated image (512x512).
+    """
+    client = _get_openai_client()
 
     # DALL·E 2 is cheaper than DALL·E 3, good enough for a small poster in this project
-    response_image = openai.Image.create(
+    response_image = client.images.generate(
         model="dall-e-2",
         prompt=f"Create a TV-series poster or wall art, based on this description: {description}",
         n=1,
         size="512x512",
+        timeout=60.0,
     )
 
-    return response_image["data"][0]["url"]
+    return response_image.data[0].url
 
 
 def create_ai_tv(initial_shows, recommended_shows):
+    """
+    Create two AI-generated fictional TV series with titles, descriptions, and poster images.
+
+    Show #1 is based on the user's favorite shows; Show #2 is based on the
+    recommended shows. Each gets a DALL·E-generated poster image.
+
+    Args:
+        initial_shows: List of show titles the user liked.
+        recommended_shows: DataFrame or list of recommended show titles.
+
+    Returns:
+        DataFrame with columns: Title, Description, Image (URLs).
+    """
     response_from_initial_shows, response_from_recommended_shows = create_tv_series_names_and_descriptions(
         initial_shows, recommended_shows
     )

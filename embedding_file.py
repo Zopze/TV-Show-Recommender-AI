@@ -1,32 +1,32 @@
+"""
+Embedding Loader for TV Show Recommender.
 
-import openai
-from dotenv import load_dotenv
-import os
+Loads pre-computed text embeddings from imdb_tvshows_embedding.pkl for use in
+similarity-based recommendations. To regenerate embeddings, iterate over
+imdb_tvshows.csv and use OpenAI's text-embedding-ada-002 model.
+"""
+
 import pickle
-import pandas as pd
+from functools import lru_cache
 
-load_dotenv()
-openai.api_key = os.environ.get("OPENAI_API_KEY")
-df = pd.read_csv("imdb_tvshows.csv")
+# --- Embedding generation code removed ---
+# To regenerate embeddings, iterate over imdb_tvshows.csv and for each row create
+# text = row["Genres"] + " - " + row["Description"], then call:
+#   openai.Embedding.create(input=text, model='text-embedding-ada-002')
+# and dump the {title: embedding} dict to imdb_tvshows_embedding.pkl.
 
-embed_dict = {}
-for i, row in df.iterrows():
-    title = row["Title"]
-    description = row["Description"]
-    genre = row["Genres"]
-    text = genre + " - " + description
 
-"""  The once calling for OpenAI about embedding
-#   Get embeddings from the OpenAI
-    response = openai.Embedding.create(
-        input=text,
-        model='text-embedding-ada-002',
-    )
+@lru_cache(maxsize=4)
+def load_embeddings(path: str = 'imdb_tvshows_embedding.pkl') -> dict:
+    """
+    Load pre-computed embeddings from a pickle file.
 
-    embed_dict[title] = response['data'][0]['embedding']
+    Args:
+        path: Path to the pickle file (default: imdb_tvshows_embedding.pkl).
 
-with open('imdb_tvshows_embedding.pkl', 'wb') as f:
-    pickle.dump(embed_dict, f)"""
-
-with open('imdb_tvshows_embedding.pkl', 'rb') as f:
-    info = pickle.load(f)
+    Returns:
+        Dict mapping show titles to embedding vectors.
+    """
+    with open(path, 'rb') as f:
+        # Trusted, project-internal artifact (Ruff S301)
+        return pickle.load(f)

@@ -1,8 +1,27 @@
+"""
+Show Suggester AI - TV Show Recommendation Engine.
+
+Core module for the TV Show Recommender that handles:
+- Fuzzy matching of user input to show titles (automatic_translator)
+- Similarity-based recommendations using embeddings (ai_recommendation)
+- Display of show images or AI-generated artwork (show_image)
+
+Dependencies:
+    - thefuzz: Fuzzy string matching for show name correction
+    - pandas, numpy: Data handling and similarity computation
+    - talking_to_AI: OpenAI integration for AI-generated show suggestions
+    - PIL, matplotlib: Image display
+
+Data files required:
+    - imdb_tvshows.csv: TV show catalog
+    - imdb_tvshows_embedding.pkl: Pre-computed embeddings
+    - error-message.png: Fallback image when URLs fail
+"""
 
 from thefuzz import fuzz
 import pandas as pd
 import numpy as np
-import pickle
+from embedding_file import load_embeddings
 from talking_to_AI import create_ai_tv
 import requests
 from PIL import Image
@@ -41,6 +60,21 @@ def cosine_similarity(a, b) -> float:
 
 
 def show_image(df):
+    """
+    Display side-by-side images for the first two shows in the DataFrame.
+
+    Fetches images from URLs in the 'Image' column. On fetch failure, shows
+    a placeholder (error-message.png). Opens a matplotlib window.
+
+    Args:
+        df: DataFrame with an 'Image' column containing URLs.
+
+    Returns:
+        List of the two image URLs that were displayed.
+
+    Raises:
+        ValueError: If 'Image' column is missing or DataFrame has fewer than 2 rows.
+    """
     # Checking that Image column exists in the DataFrame
     if 'Image' not in df.columns:
         raise ValueError("DataFrame does not have an 'Image' column")
@@ -49,7 +83,7 @@ def show_image(df):
     if len(df) < 2:
         raise ValueError("DataFrame needs at least two rows to display images")
 
-    image_urls = [df.loc[0, 'Image'], df.loc[1, 'Image']]
+    image_urls = [df.iloc[0]['Image'], df.iloc[1]['Image']]
 
     # Setting the size of the figure
     plt.figure(figsize=(10, 5))
@@ -67,7 +101,12 @@ def show_image(df):
         except Exception:
             # Fallback placeholder image (make sure this file exists in your project)
             holder_image = resource_path('error-message.png')
-            image = Image.open(holder_image)
+            try:
+                image = Image.open(holder_image)
+            except FileNotFoundError:
+                raise FileNotFoundError(
+                    f"Fallback image '{holder_image}' not found. Add error-message.png to your project."
+                ) from None
             ax.imshow(image)
             ax.axis('off')
 
@@ -77,13 +116,26 @@ def show_image(df):
 
 
 def automatic_translator(shows_list, df):
-    if not shows_list or df is None:
+    """
+    Map user input (possibly misspelled) to correct show titles from the catalog.
+
+    Uses fuzzy string matching (thefuzz) to find the best match for each
+    user-entered show name against the DataFrame's Title column.
+
+    Args:
+        shows_list: List of show names as entered by the user.
+        df: DataFrame with a 'Title' column (catalog of known shows).
+
+    Returns:
+        List of corrected/matched show titles. Empty list if input is invalid.
+    """
+    if not shows_list or df is None or not isinstance(df, pd.DataFrame):
         return []
 
     correct_shows_list = []
     for show in shows_list:
-        df['Ratio'] = df['Title'].apply(lambda title: fuzz.ratio(show, title))
-        max_ratio_row = df.loc[df['Ratio'].idxmax()]
+        ratios = df['Title'].apply(lambda title, _show=show: fuzz.ratio(_show, title))
+        max_ratio_row = df.loc[ratios.idxmax()]
         correct_shows_list.append(max_ratio_row['Title'])
 
     return correct_shows_list
@@ -91,23 +143,36 @@ def automatic_translator(shows_list, df):
 
 def ai_recommendation(shows_list, df):
     """
+    Recommend TV shows based on input favorites using embedding similarity.
+
+    Computes the average embedding of the user's favorite shows, then finds
+    the 5 most similar shows from the catalog. Optionally calls OpenAI to
+    generate fictional show ideas and display artwork.
+
+    Args:
+        shows_list: List of show titles the user likes (already matched by automatic_translator).
+        df: DataFrame with 'Title' column (must match keys in embedding pickle).
+
     Returns:
-      recommendation_shows (DataFrame): top 5 recommended shows
-      generate_shows (DataFrame): AI-generated shows (may be empty if OpenAI fails)
+        Tuple of:
+        - recommendation_shows (DataFrame): Top 5 recommended shows with Similarity column.
+        - generate_shows (DataFrame): AI-generated shows/ads (empty if OpenAI fails).
     """
     if not shows_list:
         return pd.DataFrame(), pd.DataFrame()
 
-    with open(resource_path('imdb_tvshows_embedding.pkl'), 'rb') as f:
-        embed_dict_info = pickle.load(f)
+    df = df.copy()
 
-    df['Embedding'] = df['Title'].apply(lambda title: embed_dict_info[title])
+    embed_dict_info = load_embeddings(resource_path('imdb_tvshows_embedding.pkl'))
 
-    # Compute the average embedding vector of all shows in given shows list
-    avg_embed = np.mean(
-        [embed_dict_info[show] for show in shows_list if show in embed_dict_info],
-        axis=0
-    )
+    df['Embedding'] = df['Title'].apply(lambda title: embed_dict_info.get(title))
+    df = df[df['Embedding'].notna()]
+
+    valid_embeds = [embed_dict_info[show] for show in shows_list if show in embed_dict_info]
+    if not valid_embeds:
+        return pd.DataFrame(), pd.DataFrame()
+
+    avg_embed = np.mean(valid_embeds, axis=0)
 
     # Function that compute the similarity with the average embedding.
     def computing_similarity(row):
@@ -137,6 +202,7 @@ def ai_recommendation(shows_list, df):
 
 
 if __name__ == '__main__':
+    # Interactive CLI: prompts for favorite shows, shows recommendations and AI-generated content
     df = pd.read_csv(resource_path('imdb_tvshows.csv'))
 
     while True:
@@ -165,16 +231,17 @@ if __name__ == '__main__':
 
     print("\nHere are the TV shows that I think you would love:\n")
     for _, row in recommendation_shows.iterrows():
-        print(f"{row['Title']} ({row['Similarity'] * 100:.0f}%)\n")
+        sim = max(0.0, row['Similarity'])
+        print(f"{row['Title']} ({sim * 100:.0f}%)\n")
 
     # Only show AI-generated content if it exists
     if not generate_shows.empty and len(generate_shows) >= 2:
         print(
             "I have also created just for you two shows which I think you would love."
             "\nShow #1 is based on the fact that you loved the input shows that you gave me."
-            f"\nIts name is {generate_shows.at[0, 'Title']} and it is about {generate_shows.at[0, 'Description']}"
+            f"\nIts name is {generate_shows.iloc[0]['Title']} and it is about {generate_shows.iloc[0]['Description']}"
             "\nShow #2 is based on the shows that I recommended for you."
-            f"\nIts name is {generate_shows.at[1, 'Title']} and it is about {generate_shows.at[1, 'Description']}"
+            f"\nIts name is {generate_shows.iloc[1]['Title']} and it is about {generate_shows.iloc[1]['Description']}"
             "\nHere are also the 2 TV show ads. Hope you like them!"
         )
 

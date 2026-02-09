@@ -1,3 +1,22 @@
+"""
+Show Suggester AI - TV Show Recommendation Engine.
+
+Core module for the TV Show Recommender that handles:
+- Fuzzy matching of user input to show titles (automatic_translator)
+- Similarity-based recommendations using embeddings (ai_recommendation)
+- Display of show images or AI-generated artwork (show_image)
+
+Dependencies:
+    - thefuzz: Fuzzy string matching for show name correction
+    - pandas, numpy: Data handling and similarity computation
+    - talking_to_AI: OpenAI integration for AI-generated show suggestions
+    - PIL, matplotlib: Image display
+
+Data files required:
+    - imdb_tvshows.csv: TV show catalog
+    - imdb_tvshows_embedding.pkl: Pre-computed embeddings
+    - error-message.png: Fallback image when URLs fail
+"""
 
 from thefuzz import fuzz
 import pandas as pd
@@ -41,6 +60,21 @@ def cosine_similarity(a, b) -> float:
 
 
 def show_image(df):
+    """
+    Display side-by-side images for the first two shows in the DataFrame.
+
+    Fetches images from URLs in the 'Image' column. On fetch failure, shows
+    a placeholder (error-message.png). Opens a matplotlib window.
+
+    Args:
+        df: DataFrame with an 'Image' column containing URLs.
+
+    Returns:
+        List of the two image URLs that were displayed.
+
+    Raises:
+        ValueError: If 'Image' column is missing or DataFrame has fewer than 2 rows.
+    """
     # Checking that Image column exists in the DataFrame
     if 'Image' not in df.columns:
         raise ValueError("DataFrame does not have an 'Image' column")
@@ -77,6 +111,19 @@ def show_image(df):
 
 
 def automatic_translator(shows_list, df):
+    """
+    Map user input (possibly misspelled) to correct show titles from the catalog.
+
+    Uses fuzzy string matching (thefuzz) to find the best match for each
+    user-entered show name against the DataFrame's Title column.
+
+    Args:
+        shows_list: List of show names as entered by the user.
+        df: DataFrame with a 'Title' column (catalog of known shows).
+
+    Returns:
+        List of corrected/matched show titles. Empty list if input is invalid.
+    """
     if not shows_list or df is None:
         return []
 
@@ -91,9 +138,20 @@ def automatic_translator(shows_list, df):
 
 def ai_recommendation(shows_list, df):
     """
+    Recommend TV shows based on input favorites using embedding similarity.
+
+    Computes the average embedding of the user's favorite shows, then finds
+    the 5 most similar shows from the catalog. Optionally calls OpenAI to
+    generate fictional show ideas and display artwork.
+
+    Args:
+        shows_list: List of show titles the user likes (already matched by automatic_translator).
+        df: DataFrame with 'Title' column (must match keys in embedding pickle).
+
     Returns:
-      recommendation_shows (DataFrame): top 5 recommended shows
-      generate_shows (DataFrame): AI-generated shows (may be empty if OpenAI fails)
+        Tuple of:
+        - recommendation_shows (DataFrame): Top 5 recommended shows with Similarity column.
+        - generate_shows (DataFrame): AI-generated shows/ads (empty if OpenAI fails).
     """
     if not shows_list:
         return pd.DataFrame(), pd.DataFrame()
@@ -137,6 +195,7 @@ def ai_recommendation(shows_list, df):
 
 
 if __name__ == '__main__':
+    # Interactive CLI: prompts for favorite shows, shows recommendations and AI-generated content
     df = pd.read_csv(resource_path('imdb_tvshows.csv'))
 
     while True:

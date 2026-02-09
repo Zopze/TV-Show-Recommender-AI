@@ -10,8 +10,8 @@ It also supports generating **two custom “new shows”** and **two TV-show ads
 ## ✨ What this project does (required flow)
 
 1. Ask the user to enter multiple TV shows separated by commas.
-2. Use **fuzzy string matching** to map user input → real show titles, then confirm with the user (y/n).  
-3. Generate recommendations:  
+2. Use **fuzzy string matching** to map user input → real show titles, then confirm with the user (y/n).
+3. Generate recommendations:
    - Load embeddings from disk (pickle)
    - Compute the **average vector** of the input shows
    - Find the **5 closest** shows (excluding the input shows)
@@ -19,16 +19,16 @@ It also supports generating **two custom “new shows”** and **two TV-show ads
 4. Create:
    - **Show #1** based on the user’s input shows
    - **Show #2** based on the recommended shows
-   - **2 ads** (images) for the shows using DALL·E. 
+   - **2 ads** (images) for the shows using DALL·E.
 
 ---
 
 ## 🧠 How recommendations work (high level)
 
-- **Dataset:** `imdb_tvshows.csv` (provided by the course).  
-- **Embeddings:** we embed each show’s *Description* once, save `{title -> vector}` to a pickle file, and reuse it on every run (to save cost + time). 
+- **Dataset:** `imdb_tvshows.csv` (provided by the course).
+- **Embeddings:** we embed each show’s *Description* once, save `{title -> vector}` to a pickle file, and reuse it on every run (to save cost + time).
 - **Similarity:** cosine similarity between the user’s average vector and every show vector.
-- **Fuzzy matching:** `thefuzz.process.extractOne` (Levenshtein distance) to map typos to real show titles.  
+- **Fuzzy matching:** `thefuzz.process.extractOne` (Levenshtein distance) to map typos to real show titles.
 
 ---
 
@@ -66,7 +66,8 @@ If no key is provided, the program should still run the **recommendation logic**
 ## ▶️ Run from source (Python)
 
 ### Requirements
-- Python **3.10+** recommended
+- Python **3.10–3.12** (recommended)  
+  *Note: Python 3.13 may fail to install some dependencies on Windows (e.g., pandas).*
 - pip
 
 ### 1) Clone
@@ -109,23 +110,13 @@ python ShowSuggesterAI.py
 ## 🧪 Tests (TDD)
 
 The exercise requires developing with **TDD** (tests first → red → green → refactor).
-Run tests (depending on your setup):
 
-- If you use `pytest`:
-```bash
-pytest -q
-```
-
-- Or run the included test script:
+- Run the included test script:
 ```bash
 python ShowSuggesterAI_Test.py
 ```
 
-### Coverage (recommended)
-```bash
-pip install pytest-cov
-pytest --cov=. --cov-report=term-missing
-```
+> If you later migrate to `pytest`, you can add it as a dev dependency and run: `pytest -q`.
 
 ---
 
@@ -137,5 +128,3 @@ pytest --cov=. --cov-report=term-missing
 - `imdb_tvshows.csv` — dataset
 - `imdb_tvshows_embedding.pkl` — cached embeddings dictionary (pickle)
 - `ShowSuggesterAI_Test.py` — tests
-
----

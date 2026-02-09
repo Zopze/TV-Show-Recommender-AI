@@ -83,7 +83,7 @@ def show_image(df):
     if len(df) < 2:
         raise ValueError("DataFrame needs at least two rows to display images")
 
-    image_urls = [df.loc[0, 'Image'], df.loc[1, 'Image']]
+    image_urls = [df.iloc[0]['Image'], df.iloc[1]['Image']]
 
     # Setting the size of the figure
     plt.figure(figsize=(10, 5))
@@ -101,7 +101,12 @@ def show_image(df):
         except Exception:
             # Fallback placeholder image (make sure this file exists in your project)
             holder_image = resource_path('error-message.png')
-            image = Image.open(holder_image)
+            try:
+                image = Image.open(holder_image)
+            except FileNotFoundError:
+                raise FileNotFoundError(
+                    f"Fallback image '{holder_image}' not found. Add error-message.png to your project."
+                ) from None
             ax.imshow(image)
             ax.axis('off')
 
@@ -129,8 +134,8 @@ def automatic_translator(shows_list, df):
 
     correct_shows_list = []
     for show in shows_list:
-        df['Ratio'] = df['Title'].apply(lambda title: fuzz.ratio(show, title))
-        max_ratio_row = df.loc[df['Ratio'].idxmax()]
+        ratios = df['Title'].apply(lambda title: fuzz.ratio(show, title))
+        max_ratio_row = df.loc[ratios.idxmax()]
         correct_shows_list.append(max_ratio_row['Title'])
 
     return correct_shows_list
@@ -156,10 +161,13 @@ def ai_recommendation(shows_list, df):
     if not shows_list:
         return pd.DataFrame(), pd.DataFrame()
 
+    df = df.copy()
+
     with open(resource_path('imdb_tvshows_embedding.pkl'), 'rb') as f:
         embed_dict_info = pickle.load(f)
 
-    df['Embedding'] = df['Title'].apply(lambda title: embed_dict_info[title])
+    df['Embedding'] = df['Title'].apply(lambda title: embed_dict_info.get(title))
+    df = df[df['Embedding'].notna()]
 
     # Compute the average embedding vector of all shows in given shows list
     avg_embed = np.mean(

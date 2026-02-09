@@ -11,7 +11,7 @@ Run with: pytest ShowSuggesterAI_Test.py -v
 
 from ShowSuggesterAI import automatic_translator, ai_recommendation, show_image
 import pandas as pd
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 def test_automatic_translator():
     """Test fuzzy matching of user input to show titles in the dataset."""
@@ -35,7 +35,7 @@ def test_automatic_translator():
     assert automatic_translator(['Lopin', 'Rivedale', 'frid'], df) == ['Lupin', 'Riverdale', 'Friends']
     assert automatic_translator(['howi metyou', 'watcher', 'strange thing', 'brook 99'], df) == ['How I Met Your Mother', 'The Witcher', 'Stranger Things', 'Brooklyn Nine-Nine']
 
-def test_Ai_recommendation():
+def test_ai_recommendation():
     """Test recommendation logic with empty input and valid show lists."""
     df = pd.DataFrame({
         'Title': ['How I Met Your Mother', 'The Witcher', 'Stranger Things'],
@@ -60,31 +60,30 @@ def test_Ai_recommendation():
 
     assert isinstance(recommend_shows, pd.DataFrame)
     assert isinstance(generate_shows, pd.DataFrame)
+    assert not recommend_shows.empty, "Valid input should return recommendations"
+    # Input shows are excluded; Stranger Things is the only remaining show
+    assert 'Stranger Things' in recommend_shows['Title'].values
 
 def test_show_image():
-    """Test show_image handles both invalid and valid image URLs without crashing."""
-    # Assume you have invalid image urls
-    df = pd.DataFrame({
-        'Image': ['url1', 'url2']
-    })
-
-    try:
+    """Test show_image handles both invalid and valid image URLs."""
+    # Invalid URLs: requests fails, fallback to placeholder image
+    df = pd.DataFrame({'Image': ['url1', 'url2']})
+    with patch('ShowSuggesterAI.requests.get', side_effect=Exception("network")), \
+         patch('ShowSuggesterAI.plt.show'), \
+         patch('ShowSuggesterAI.Image.open', return_value=MagicMock()):
         show_image(df)
-        assert True
-    except:
-        assert False
 
-    # Assume you have valid image urls
+    # Valid URLs: mock network and image load to keep test hermetic
     df = pd.DataFrame({
-        'Image': ['https://incubator.ucf.edu/wp-content/uploads/2023/07/artificial-intelligence-new-technology-science-futuristic-abstract-human-brain-ai-technology-cpu-central-processor-unit-chipset-big-data-machine-learning-cyber-mind-domination-generative-ai-scaled-1.jpg',
-                  'https://images.spiceworks.com/wp-content/uploads/2022/02/14135111/shutterstock_1154457493.jpg']
+        'Image': ['https://example.com/img1.jpg', 'https://example.com/img2.jpg']
     })
-
-    try:
+    mock_response = MagicMock()
+    mock_response.content = b'fake'
+    mock_response.raise_for_status = MagicMock()
+    with patch('ShowSuggesterAI.requests.get', return_value=mock_response), \
+         patch('ShowSuggesterAI.plt.show'), \
+         patch('ShowSuggesterAI.Image.open', return_value=MagicMock()):
         show_image(df)
-        assert True
-    except:
-        assert False
 
 
 

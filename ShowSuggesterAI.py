@@ -1,3 +1,4 @@
+
 from thefuzz import fuzz
 import pandas as pd
 import numpy as np
@@ -32,7 +33,7 @@ def cosine_similarity(a, b) -> float:
 def show_image(df):
     # Checking that Image column exists in the DataFrame
     if 'Image' not in df.columns:
-        raise ValueError("DataFrame does not has an 'Image' column")
+        raise ValueError("DataFrame does not have an 'Image' column")
 
     # Checking that there are at least two rows for two shows
     if len(df) < 2:
@@ -41,7 +42,7 @@ def show_image(df):
     image_urls = [df.loc[0, 'Image'], df.loc[1, 'Image']]
 
     # Setting the size of the figure
-    plt.figure(figsize=(10, 5))  # Adjust the size
+    plt.figure(figsize=(10, 5))
 
     # Display the images
     for i, image_url in enumerate(image_urls):
@@ -53,8 +54,8 @@ def show_image(df):
             image = Image.open(BytesIO(response.content))
             ax.imshow(image)
             ax.axis('off')
-
         except Exception:
+            # Fallback placeholder image (make sure this file exists in your project)
             holder_image = 'error-message.png'
             image = Image.open(holder_image)
             ax.imshow(image)
@@ -66,17 +67,24 @@ def show_image(df):
 
 
 def automatic_translator(shows_list, df):
-    if shows_list is None or shows_list == [] or df is None:
+    if not shows_list or df is None:
         return []
+
     correct_shows_list = []
     for show in shows_list:
         df['Ratio'] = df['Title'].apply(lambda title: fuzz.ratio(show, title))
         max_ratio_row = df.loc[df['Ratio'].idxmax()]
         correct_shows_list.append(max_ratio_row['Title'])
+
     return correct_shows_list
 
 
 def ai_recommendation(shows_list, df):
+    """
+    Returns:
+      recommendation_shows (DataFrame): top 5 recommended shows
+      generate_shows (DataFrame): AI-generated shows (may be empty if OpenAI fails)
+    """
     if not shows_list:
         return pd.DataFrame(), pd.DataFrame()
 
@@ -86,7 +94,10 @@ def ai_recommendation(shows_list, df):
     df['Embedding'] = df['Title'].apply(lambda title: embed_dict_info[title])
 
     # Compute the average embedding vector of all shows in given shows list
-    avg_embed = np.mean([embed_dict_info[show] for show in shows_list if show in embed_dict_info], axis=0)
+    avg_embed = np.mean(
+        [embed_dict_info[show] for show in shows_list if show in embed_dict_info],
+        axis=0
+    )
 
     # Function that compute the similarity with the average embedding.
     def computing_similarity(row):
@@ -104,8 +115,13 @@ def ai_recommendation(shows_list, df):
     # The recommended shows that we found in the file.
     recommendation_shows = df_sort.head(5)
 
-    # The shows that the AI creates.
-    generate_shows = create_ai_tv(shows_list, recommendation_shows)
+    # The shows that the AI creates (optional)
+    try:
+        generate_shows = create_ai_tv(shows_list, recommendation_shows)
+    except Exception as e:
+        print("\n[AI features disabled] OpenAI call failed, continuing without AI-generated shows/ads.")
+        print("Reason:", str(e))
+        generate_shows = pd.DataFrame()  # empty DF so the program can continue safely
 
     return recommendation_shows, generate_shows
 
@@ -130,24 +146,33 @@ if __name__ == '__main__':
         correction = input(f"Just to make sure, do you mean {correct_shows}? (y/n)\n").strip().lower()
 
         if correction != 'y':
-            print("Sorry about that. Let's try again — please make sure to write the show names correctly.\n")
+            print("\nSorry about that. Let's try again — please make sure to write the show names correctly.\n")
         else:
-            print("Great! Generating recommendations…")
+            print("\nGreat! Generating recommendations…")
             break
 
     recommendation_shows, generate_shows = ai_recommendation(correct_shows, df)
 
-    print("Here are the TV shows that I think you would love:\n")
+    print("\nHere are the TV shows that I think you would love:\n")
     for _, row in recommendation_shows.iterrows():
         print(f"{row['Title']} ({row['Similarity'] * 100:.0f}%)\n")
 
-    print(
-        "I have also created just for you two shows which I think you would love."
-        "\nShow #1 is based on the fact that you loved the input shows that you gave me."
-        f"\nIts name is {generate_shows.at[0, 'Title']} and it is about {generate_shows.at[0, 'Description']}"
-        "\nShow #2 is based on the shows that I recommended for you."
-        f"\nIts name is {generate_shows.at[1, 'Title']} and it is about {generate_shows.at[1, 'Description']}"
-        "\nHere are also the 2 TV show ads. Hope you like them!"
-    )
+    # Only show AI-generated content if it exists
+    if not generate_shows.empty and len(generate_shows) >= 2:
+        print(
+            "I have also created just for you two shows which I think you would love."
+            "\nShow #1 is based on the fact that you loved the input shows that you gave me."
+            f"\nIts name is {generate_shows.at[0, 'Title']} and it is about {generate_shows.at[0, 'Description']}"
+            "\nShow #2 is based on the shows that I recommended for you."
+            f"\nIts name is {generate_shows.at[1, 'Title']} and it is about {generate_shows.at[1, 'Description']}"
+            "\nHere are also the 2 TV show ads. Hope you like them!"
+        )
 
-    show_image(generate_shows)
+        # If your AI output DF contains 'Image' URLs, show them
+        try:
+            show_image(generate_shows)
+        except Exception as e:
+            print("\nCould not display images:", str(e))
+    else:
+        print("\nAI-generated shows/ads were skipped (OpenAI API not available).")
+        print("You can still use the recommendations normally.")

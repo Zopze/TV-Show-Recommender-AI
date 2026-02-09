@@ -134,7 +134,7 @@ def automatic_translator(shows_list, df):
 
     correct_shows_list = []
     for show in shows_list:
-        ratios = df['Title'].apply(lambda title: fuzz.ratio(show, title))
+        ratios = df['Title'].apply(lambda title, _show=show: fuzz.ratio(_show, title))
         max_ratio_row = df.loc[ratios.idxmax()]
         correct_shows_list.append(max_ratio_row['Title'])
 
@@ -239,9 +239,9 @@ if __name__ == '__main__':
         print(
             "I have also created just for you two shows which I think you would love."
             "\nShow #1 is based on the fact that you loved the input shows that you gave me."
-            f"\nIts name is {generate_shows.at[0, 'Title']} and it is about {generate_shows.at[0, 'Description']}"
+            f"\nIts name is {generate_shows.iloc[0]['Title']} and it is about {generate_shows.iloc[0]['Description']}"
             "\nShow #2 is based on the shows that I recommended for you."
-            f"\nIts name is {generate_shows.at[1, 'Title']} and it is about {generate_shows.at[1, 'Description']}"
+            f"\nIts name is {generate_shows.iloc[1]['Title']} and it is about {generate_shows.iloc[1]['Description']}"
             "\nHere are also the 2 TV show ads. Hope you like them!"
         )
 

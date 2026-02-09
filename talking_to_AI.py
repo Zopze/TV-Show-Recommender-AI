@@ -123,7 +123,14 @@ TV Series short description: <description>
         max_tokens=250,
         timeout=60.0,
     )
-    response_chat_text_initial = response_chat_initial.choices[0].message.content
+    choice_initial = response_chat_initial.choices[0]
+    if choice_initial.message.content is None:
+        reason = getattr(choice_initial, "finish_reason", None)
+        raise ValueError(
+            f"Model returned no content (finish_reason={reason}). "
+            "Expected marker not found; possibly refused or content-filtered."
+        )
+    response_chat_text_initial = choice_initial.message.content
 
     response_chat_recommended = client.chat.completions.create(
         seed=1,
@@ -133,7 +140,14 @@ TV Series short description: <description>
         max_tokens=250,
         timeout=60.0,
     )
-    response_chat_text_recommended = response_chat_recommended.choices[0].message.content
+    choice_recommended = response_chat_recommended.choices[0]
+    if choice_recommended.message.content is None:
+        reason = getattr(choice_recommended, "finish_reason", None)
+        raise ValueError(
+            f"Model returned no content (finish_reason={reason}). "
+            "Expected marker not found; possibly refused or content-filtered."
+        )
+    response_chat_text_recommended = choice_recommended.message.content
 
     return response_chat_text_initial, response_chat_text_recommended
 

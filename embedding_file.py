@@ -7,6 +7,7 @@ imdb_tvshows.csv and use OpenAI's text-embedding-ada-002 model.
 """
 
 import pickle
+from functools import lru_cache
 
 # --- Embedding generation code removed ---
 # To regenerate embeddings, iterate over imdb_tvshows.csv and for each row create
@@ -15,6 +16,7 @@ import pickle
 # and dump the {title: embedding} dict to imdb_tvshows_embedding.pkl.
 
 
+@lru_cache(maxsize=4)
 def load_embeddings(path: str = 'imdb_tvshows_embedding.pkl') -> dict:
     """
     Load pre-computed embeddings from a pickle file.

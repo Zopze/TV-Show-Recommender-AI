@@ -7,6 +7,8 @@ import pandas as pd
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+if not openai.api_key:
+    raise ValueError("Missing OPENAI_API_KEY. Please set it in your .env file.")
 
 def extract_title_and_description(text):
     title_start = text.find("TV Series name: ") + len("TV Series name: ")
@@ -21,20 +23,31 @@ def extract_title_and_description(text):
 
 def create_tv_series_names_and_descriptions(initial_shows, recommended_shows):
 
+    # Use only the top recommended titles (avoid sending the full DataFrame)
+    recommended_titles = recommended_shows["Title"].head(5).tolist()
+
+    # Make the output format strict so parsing is reliable
+    prompt_template = """You are a creative TV Series Creator-Writer.
+    Based on this list of TV shows: {shows}
+    Create ONE new TV series.
+    
+    Return EXACTLY in this format (2 lines only):
+    TV Series name: <name>
+    TV Series short description: <description>
+    """
+
     # Generate TV series names and descriptions for initial shows
     response_chat_initial = openai.ChatCompletion.create(
         seed=1,
         messages=[
             {
                 'role': 'user',
-                'content': f'''You are a creative TV Series Creator-Writer, 
-                                based on this list of TV shows: {initial_shows}, 
-                                create a new TV series name and a short IMDb-like description
-                                TV Series name:
-                                TV Series short description:'''
+                'content': prompt_template.format(shows=initial_shows)
             }
         ],
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
+        temperature=0.8,
+        max_tokens=250,
     )
 
     response_chat_text_initial = response_chat_initial['choices'][0]['message']['content']
@@ -44,15 +57,13 @@ def create_tv_series_names_and_descriptions(initial_shows, recommended_shows):
         seed=1,
         messages=[
             {
-                'role': 'user',
-                'content': f'''You are a creative TV Series Creator-Writer, 
-                                based on this list of TV shows: {recommended_shows}, 
-                                create a new TV series name and a short IMDb-like description
-                                TV Series name:
-                                TV Series short description:'''
+                "role": "user",
+                "content": prompt_template.format(shows=recommended_titles),
             }
         ],
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
+        temperature=0.8,
+        max_tokens=250,
     )
 
     response_chat_text_recommended = response_chat_recommended['choices'][0]['message']['content']
@@ -64,8 +75,7 @@ def create_tv_series_photo(description):
             model='dall-e-3',
             prompt=f'Create a TV-series poster or wall art, based on this description: {description}',
             n=1,
-            size='1024x1024',  # or '256x256' or '512x512' or '1024x1024' or '2048x2048'
-            quality='standard',
+            size='1024x1024',
         )
 
         return response_image['data'][0]['url']

